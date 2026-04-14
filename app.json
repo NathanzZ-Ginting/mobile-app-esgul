@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "ESGUL Service Pro",
+    "slug": "esgul-service-pro",
+    "version": "1.0.0",
+    "scheme": "esgulepro",
+    "entryPoint": "./App.tsx",
+    "updates": {
+      "enabled": false
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTabletMode": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermissions": "Allow ESGUL Service Pro to access your location."
+        }
+      ]
+    ]
+  }
+}
