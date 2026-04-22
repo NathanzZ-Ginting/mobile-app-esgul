@@ -169,7 +169,8 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 -- 4. ENABLE ROW LEVEL SECURITY (RLS)
 -- ============================================================================
 
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+-- Disable RLS on users table initially (Supabase Auth needs full access during login)
+ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
@@ -183,18 +184,6 @@ ALTER TABLE promotions DISABLE ROW LEVEL SECURITY;
 -- ============================================================================
 -- 5. CREATE RLS POLICIES
 -- ============================================================================
-
--- Users: Can view own profile
-DROP POLICY IF EXISTS "Users can view own profile" ON users;
-CREATE POLICY "Users can view own profile"
-  ON users FOR SELECT
-  USING (auth.uid() = id);
-
--- Users: Can update own profile
-DROP POLICY IF EXISTS "Users can update own profile" ON users;
-CREATE POLICY "Users can update own profile"
-  ON users FOR UPDATE
-  USING (auth.uid() = id);
 
 -- Bookings: Can view own bookings
 DROP POLICY IF EXISTS "Users can view own bookings" ON bookings;
