@@ -144,14 +144,26 @@ export const AdminDashboardScreen: React.FC = () => {
     }
   }
 
-  const updateStatus = (bookingId: string, newStatus: string) => {
-    setBookings((prev) =>
-      prev.map((b) =>
-        b.id === bookingId ? { ...b, status: newStatus } : b
+  const updateStatus = async (bookingId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: newStatus })
+        .eq('id', bookingId)
+
+      if (error) throw error
+
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === bookingId ? { ...b, status: newStatus } : b
+        )
       )
-    )
-    setMenuVisible({ ...menuVisible, [bookingId]: false })
-    Alert.alert('Success', `Status updated to ${newStatus}`)
+      setMenuVisible({ ...menuVisible, [bookingId]: false })
+      Alert.alert('Success', `Status updated to ${newStatus}`)
+    } catch (error) {
+      console.error('Error updating booking status:', error)
+      Alert.alert('Error', 'Failed to update status')
+    }
   }
 
   // Service add/edit functionality disabled - loading real data from Supabase

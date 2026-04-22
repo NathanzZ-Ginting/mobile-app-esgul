@@ -34,6 +34,22 @@ export const BookingHistoryScreen: React.FC = () => {
   useEffect(() => {
     loadReviewCount()
     fetchBookings()
+
+    if (!user?.id) return
+
+    // Subscribe to real-time updates for this user's bookings
+    const subscription = supabase
+      .from(`bookings:user_id=eq.${user.id}`)
+      .on('*', (payload) => {
+        console.log('Booking update received:', payload)
+        // Refresh bookings when any change occurs
+        fetchBookings()
+      })
+      .subscribe()
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [user?.id])
 
   const fetchBookings = async () => {
