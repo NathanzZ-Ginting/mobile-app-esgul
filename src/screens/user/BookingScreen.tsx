@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { View, StyleSheet, ScrollView, Alert, Text, TouchableOpacity } from 'react-native'
+import { View, StyleSheet, ScrollView, Alert, Text, TouchableOpacity, Modal, Platform } from 'react-native'
 import { TextInput, Button, Menu } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
+import DateTimePicker from '@react-native-community/datetimepicker'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../services/supabaseClient'
 
@@ -28,6 +29,7 @@ export const BookingScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
   const [serviceMenuVisible, setServiceMenuVisible] = useState(false)
   const [vehicleMenuVisible, setVehicleMenuVisible] = useState(false)
   const [timeMenuVisible, setTimeMenuVisible] = useState(false)
+  const [showDatePicker, setShowDatePicker] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const timeSlots = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00']
 
@@ -102,7 +104,18 @@ export const BookingScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     }
   }
 
+  const handleDateChange = (event: any, selectedDate: any) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false)
+    }
+    if (selectedDate) {
+      const dateString = selectedDate.toISOString().split('T')[0]
+      setFormData({ ...formData, date: dateString })
+    }
+  }
+
   return (
+    <>
     <ScrollView 
       style={styles.container} 
       showsVerticalScrollIndicator={false}
@@ -232,7 +245,10 @@ export const BookingScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
           {/* Date (Read Only) */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Date</Text>
-            <TouchableOpacity style={styles.readOnlyButton}>
+            <TouchableOpacity 
+              style={styles.readOnlyButton}
+              onPress={() => setShowDatePicker(true)}
+            >
               <MaterialCommunityIcons name="calendar" size={18} color="#8B6914" />
               <Text style={styles.readOnlyText}>{formData.date}</Text>
             </TouchableOpacity>
@@ -311,8 +327,19 @@ export const BookingScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 
       <View style={styles.spacer} />
     </ScrollView>
+
+    {/* Date Picker */}
+    {showDatePicker && (
+      <DateTimePicker
+        value={new Date(formData.date)}
+        mode="date"
+        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+        onChange={handleDateChange}
+        minimumDate={new Date()}
+      />
+    )}
+    </>
   )
-}
 
 const styles = StyleSheet.create({
   container: {
