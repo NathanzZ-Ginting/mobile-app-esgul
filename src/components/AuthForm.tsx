@@ -45,17 +45,18 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             value={values[field.name]}
             onChangeText={(text) => handleChange(field.name, text)}
             secureTextEntry={field.secureTextEntry}
-            style={styles.input}
+            style={[styles.input, { color: '#e0e0e0' }]}
             mode="outlined"
             editable={!isLoading}
             outlineColor="#666666"
             activeOutlineColor="#8B6914"
             textColor="#e0e0e0"
             placeholderTextColor="#999999"
-            labelStyle={styles.label}
+            cursorColor="#8B6914"
             theme={{
               colors: {
                 primary: '#8B6914',
+                onSurfaceVariant: '#999999',
                 background: 'rgba(45, 45, 45, 0.95)',
                 surface: 'rgba(45, 45, 45, 0.95)',
               },
@@ -97,9 +98,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(55, 55, 55, 0.95)',
     borderRadius: 10,
     fontSize: 14,
+    color: '#e0e0e0',
   },
   label: {
     fontSize: 12,
+    color: '#999999',
   },
   button: {
     marginTop: 12,
