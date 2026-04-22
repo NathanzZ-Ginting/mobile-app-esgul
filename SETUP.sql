@@ -191,6 +191,18 @@ CREATE POLICY "Users can view own bookings"
   ON bookings FOR SELECT
   USING (user_id = auth.uid());
 
+-- Bookings: Admin can view all bookings
+DROP POLICY IF EXISTS "Admin can view all bookings" ON bookings;
+CREATE POLICY "Admin can view all bookings"
+  ON bookings FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE users.id = auth.uid() 
+      AND users.role = 'admin'
+    )
+  );
+
 -- Bookings: Can create own bookings
 DROP POLICY IF EXISTS "Users can create bookings" ON bookings;
 CREATE POLICY "Users can create bookings"

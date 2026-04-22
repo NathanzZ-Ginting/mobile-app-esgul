@@ -173,6 +173,17 @@ CREATE POLICY "Users can view own bookings"
   ON bookings FOR SELECT
   USING (user_id = auth.uid());
 
+-- Bookings: Admin can view all bookings
+CREATE POLICY "Admin can view all bookings"
+  ON bookings FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE users.id = auth.uid() 
+      AND users.role = 'admin'
+    )
+  );
+
 -- Bookings: Users can create own bookings
 CREATE POLICY "Users can create bookings"
   ON bookings FOR INSERT
