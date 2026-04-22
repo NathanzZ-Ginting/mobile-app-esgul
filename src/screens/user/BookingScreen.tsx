@@ -409,10 +409,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#1f1f1f',
     borderRadius: 8,
     fontSize: 14,
+    color: '#e0e0e0',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   notesInput: {
     textAlignVertical: 'top',
     minHeight: 100,
+    color: '#e0e0e0',
   },
   // Select Button
   selectButton: {
