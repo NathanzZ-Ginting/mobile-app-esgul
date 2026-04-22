@@ -215,6 +215,18 @@ CREATE POLICY "Users can update own bookings"
   ON bookings FOR UPDATE
   USING (user_id = auth.uid());
 
+-- Bookings: Admin can update all bookings
+DROP POLICY IF EXISTS "Admin can update all bookings" ON bookings;
+CREATE POLICY "Admin can update all bookings"
+  ON bookings FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE users.id = auth.uid() 
+      AND users.role = 'admin'
+    )
+  );
+
 -- Chat Messages: Can view own messages
 DROP POLICY IF EXISTS "Users can view own chats" ON chat_messages;
 CREATE POLICY "Users can view own chats"

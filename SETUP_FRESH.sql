@@ -194,6 +194,17 @@ CREATE POLICY "Users can update own bookings"
   ON bookings FOR UPDATE
   USING (user_id = auth.uid());
 
+-- Bookings: Admin can update all bookings
+CREATE POLICY "Admin can update all bookings"
+  ON bookings FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE users.id = auth.uid() 
+      AND users.role = 'admin'
+    )
+  );
+
 -- Chat Messages: Users can view own chats
 CREATE POLICY "Users can view own chats"
   ON chat_messages FOR SELECT
