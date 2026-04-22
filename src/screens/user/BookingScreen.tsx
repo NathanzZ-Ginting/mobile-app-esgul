@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, StyleSheet, ScrollView, Alert, Text, TouchableOpacity, Modal, Platform } from 'react-native'
+import { View, StyleSheet, ScrollView, Alert, Text, TouchableOpacity, Platform } from 'react-native'
 import { TextInput, Button, Menu } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import DateTimePicker from '@react-native-community/datetimepicker'
@@ -328,7 +328,7 @@ export const BookingScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       <View style={styles.spacer} />
     </ScrollView>
 
-    {/* Date Picker */}
+    {/* Date Picker Modal */}
     {showDatePicker && (
       <DateTimePicker
         value={new Date(formData.date)}
@@ -340,6 +340,7 @@ export const BookingScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     )}
     </>
   )
+}
 
 const styles = StyleSheet.create({
   container: {
