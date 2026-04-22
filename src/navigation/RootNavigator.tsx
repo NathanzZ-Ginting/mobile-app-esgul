@@ -12,8 +12,10 @@ import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen'
 import { HomeScreen } from '../screens/user/HomeScreen'
 import { BookingScreen } from '../screens/user/BookingScreen'
 import { BookingHistoryScreen } from '../screens/user/BookingHistoryScreen'
+import { ChatScreen } from '../screens/user/ChatScreen'
 import { ProfileScreen } from '../screens/user/ProfileScreen'
 import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen'
+import { AdminChatScreen } from '../screens/admin/AdminChatScreen'
 
 const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
@@ -33,7 +35,7 @@ const AuthNavigator = () => (
 const UserTabNavigator = () => (
   <Tab.Navigator
     screenOptions={({ route }) => ({
-      headerShown: true,
+      headerShown: false,
       tabBarIcon: ({ focused, color, size }) => {
         let iconName: any
         if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline'
@@ -42,8 +44,17 @@ const UserTabNavigator = () => (
         else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline'
         return <Ionicons name={iconName} size={size} color={color} />
       },
-      tabBarActiveTintColor: '#2c5aa0',
-      tabBarInactiveTintColor: '#999',
+      tabBarActiveTintColor: '#8B6914',
+      tabBarInactiveTintColor: '#666',
+      tabBarStyle: {
+        backgroundColor: '#2a2a2a',
+        borderTopColor: '#3a3a3a',
+        borderTopWidth: 1,
+      },
+      tabBarLabelStyle: {
+        fontSize: 12,
+        fontWeight: '500',
+      },
     })}
   >
     <Tab.Screen name="Home" component={HomeScreen} />
@@ -53,13 +64,58 @@ const UserTabNavigator = () => (
   </Tab.Navigator>
 )
 
+const UserNavigator = () => (
+  <Stack.Navigator
+    screenOptions={{
+      headerShown: false,
+    }}
+  >
+    <Stack.Screen name="UserTabs" component={UserTabNavigator} />
+    <Stack.Screen 
+      name="Chat" 
+      component={ChatScreen}
+      options={{
+        cardStyle: { backgroundColor: '#1f1f1f' },
+      }}
+    />
+  </Stack.Navigator>
+)
+
+const AdminTabNavigator = () => (
+  <Tab.Navigator
+    screenOptions={({ route }) => ({
+      headerShown: false,
+      tabBarIcon: ({ focused, color, size }) => {
+        let iconName: any
+        if (route.name === 'AdminDashboard') iconName = focused ? 'speedometer' : 'speedometer'
+        else if (route.name === 'AdminChat') iconName = focused ? 'chatbubble' : 'chatbubble-outline'
+        return <Ionicons name={iconName} size={size} color={color} />
+      },
+      tabBarActiveTintColor: '#8B6914',
+      tabBarInactiveTintColor: '#666',
+      tabBarStyle: {
+        backgroundColor: '#2a2a2a',
+        borderTopColor: '#3a3a3a',
+        borderTopWidth: 1,
+      },
+      tabBarLabelStyle: {
+        fontSize: 12,
+        fontWeight: '500',
+      },
+    })}
+  >
+    <Tab.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+    <Tab.Screen name="AdminChat" component={AdminChatScreen} />
+  </Tab.Navigator>
+)
+
 const AdminNavigator = () => (
   <Stack.Navigator
     screenOptions={{
       headerShown: false,
     }}
   >
-    <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+    <Stack.Screen name="AdminTabs" component={AdminTabNavigator} />
   </Stack.Navigator>
 )
 
@@ -77,7 +133,7 @@ export const RootNavigator = () => {
   return (
     <NavigationContainer>
       {isSignedIn ? (
-        role === 'admin' ? <AdminNavigator /> : <UserTabNavigator />
+        role === 'admin' ? <AdminNavigator /> : <UserNavigator />
       ) : (
         <AuthNavigator />
       )}

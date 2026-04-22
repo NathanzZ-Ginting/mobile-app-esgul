@@ -1,11 +1,21 @@
 import React, { useState } from 'react'
-import { View, StyleSheet, ScrollView, Alert, Text } from 'react-native'
-import { TextInput, Button, RadioButton } from 'react-native-paper'
+import { View, StyleSheet, ScrollView, Alert, Text, TouchableOpacity } from 'react-native'
+import { TextInput, Button } from 'react-native-paper'
 
-export const FeedbackScreen: React.FC = () => {
+export const FeedbackScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [rating, setRating] = useState(5)
   const [review, setReview] = useState('')
   const [status, setStatus] = useState<'safe' | 'issue'>('safe')
+
+  // Mock last booking data
+  const lastBooking = {
+    id: '1',
+    service: 'Oil Change',
+    date: 'Jan 15, 2024',
+    time: '09:00',
+    mechanic: 'Budi Santoso',
+    totalPrice: 150000,
+  }
 
   const handleSubmit = () => {
     if (!review.trim()) {
@@ -18,6 +28,7 @@ export const FeedbackScreen: React.FC = () => {
       setReview('')
       setRating(5)
       setStatus('safe')
+      setTimeout(() => navigation.goBack(), 1500)
     } else {
       Alert.alert(
         'Support',
@@ -27,65 +38,127 @@ export const FeedbackScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Service Feedback</Text>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backButton}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Service Review</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
-        <View style={styles.ratingSection}>
-          <Text style={styles.label}>Rating</Text>
+      <View style={styles.content}>
+        {/* Last Booking Card */}
+        <View style={styles.bookingCard}>
+          <Text style={styles.bookingLabel}>Last Service</Text>
+          <Text style={styles.bookingService}>{lastBooking.service}</Text>
+          <View style={styles.bookingDetails}>
+            <View style={styles.bookingDetailItem}>
+              <Text style={styles.bookingDetailIcon}>📅</Text>
+              <Text style={styles.bookingDetailText}>{lastBooking.date}</Text>
+            </View>
+            <View style={styles.bookingDetailItem}>
+              <Text style={styles.bookingDetailIcon}>⏰</Text>
+              <Text style={styles.bookingDetailText}>{lastBooking.time}</Text>
+            </View>
+            <View style={styles.bookingDetailItem}>
+              <Text style={styles.bookingDetailIcon}>👨‍🔧</Text>
+              <Text style={styles.bookingDetailText}>{lastBooking.mechanic}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Rating Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>How was your experience?</Text>
           <View style={styles.ratingButtons}>
             {[1, 2, 3, 4, 5].map((r) => (
-              <Button
+              <TouchableOpacity
                 key={r}
-                mode={rating === r ? 'contained' : 'outlined'}
+                style={[
+                  styles.ratingButton,
+                  rating === r && styles.ratingButtonActive,
+                ]}
                 onPress={() => setRating(r)}
-                style={styles.ratingButton}
               >
-                {r} ⭐
-              </Button>
+                <Text style={styles.ratingButtonText}>{r}</Text>
+              </TouchableOpacity>
             ))}
           </View>
+          <Text style={styles.ratingLabel}>
+            {rating === 1 && '😞 Poor'}
+            {rating === 2 && '😕 Fair'}
+            {rating === 3 && '😐 OK'}
+            {rating === 4 && '😊 Good'}
+            {rating === 5 && '😍 Excellent'}
+          </Text>
         </View>
 
-        <TextInput
-          label="Your Review"
-          value={review}
-          onChangeText={setReview}
-          multiline
-          numberOfLines={4}
-          style={[styles.input, styles.reviewInput]}
-          placeholder="Tell us about your experience..."
-        />
+        {/* Review Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Tell us more</Text>
+          <TextInput
+            label="Your Review"
+            value={review}
+            onChangeText={setReview}
+            multiline
+            numberOfLines={5}
+            style={styles.input}
+            mode="outlined"
+            outlineColor="#3a3a3a"
+            activeOutlineColor="#8B6914"
+            textColor="#ffffff"
+            placeholderTextColor="#6a6a6a"
+            placeholder="Share your experience with the service..."
+            theme={{
+              colors: {
+                primary: '#8B6914',
+                background: '#1f1f1f',
+                surface: '#2a2a2a',
+              },
+            }}
+          />
+        </View>
 
-        <View style={styles.statusSection}>
-          <Text style={styles.label}>Status</Text>
+        {/* Status Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Any issues?</Text>
           <View style={styles.radioGroup}>
-            <View style={styles.radioOption}>
-              <RadioButton
-                value="safe"
-                status={status === 'safe' ? 'checked' : 'unchecked'}
-                onPress={() => setStatus('safe')}
-              />
-              <Text style={styles.radioLabel}>Sudah Aman ✓</Text>
-            </View>
-            <View style={styles.radioOption}>
-              <RadioButton
-                value="issue"
-                status={status === 'issue' ? 'checked' : 'unchecked'}
-                onPress={() => setStatus('issue')}
-              />
-              <Text style={styles.radioLabel}>Ada Masalah</Text>
-            </View>
+            <TouchableOpacity 
+              style={styles.radioOption}
+              onPress={() => setStatus('safe')}
+            >
+              <View style={[styles.radioButton, status === 'safe' && styles.radioButtonChecked]}>
+                {status === 'safe' && <Text style={styles.radioButtonDot}>●</Text>}
+              </View>
+              <Text style={styles.radioLabel}>No issues - Everything is good ✓</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.radioOption}
+              onPress={() => setStatus('issue')}
+            >
+              <View style={[styles.radioButton, status === 'issue' && styles.radioButtonChecked]}>
+                {status === 'issue' && <Text style={styles.radioButtonDot}>●</Text>}
+              </View>
+              <Text style={styles.radioLabel}>I have concerns - Need support</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
+        {/* Submit Button */}
         <Button
           mode="contained"
           onPress={handleSubmit}
           style={styles.submitButton}
+          buttonColor="#8B6914"
+          textColor="#ffffff"
+          labelStyle={styles.submitButtonLabel}
         >
-          Submit Feedback
+          Submit Review
         </Button>
+
+        <View style={styles.spacer} />
       </View>
     </ScrollView>
   )
@@ -94,60 +167,149 @@ export const FeedbackScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#1f1f1f',
+  },
+  header: {
+    backgroundColor: '#2a2a2a',
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#3a3a3a',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  backButton: {
+    fontSize: 14,
+    color: '#8B6914',
+    fontWeight: '600',
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
   },
   content: {
+    padding: 24,
+    gap: 24,
+  },
+  bookingCard: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 12,
     padding: 16,
-    paddingVertical: 24,
-    gap: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#8B6914',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
+  bookingLabel: {
+    fontSize: 12,
+    color: '#8a8a8a',
+    fontWeight: '600',
+    marginBottom: 4,
   },
-  ratingSection: {
+  bookingService: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginBottom: 12,
+  },
+  bookingDetails: {
+    gap: 8,
+  },
+  bookingDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bookingDetailIcon: {
+    fontSize: 16,
+  },
+  bookingDetailText: {
+    fontSize: 13,
+    color: '#b0b0b0',
+  },
+  section: {
     gap: 12,
   },
-  label: {
+  sectionTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: '700',
+    color: '#ffffff',
   },
   ratingButtons: {
     flexDirection: 'row',
-    gap: 6,
-    flexWrap: 'wrap',
+    gap: 8,
   },
   ratingButton: {
     flex: 1,
-    minWidth: '18%',
+    paddingVertical: 12,
+    backgroundColor: '#2a2a2a',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#3a3a3a',
+    alignItems: 'center',
+  },
+  ratingButtonActive: {
+    backgroundColor: '#8B6914',
+    borderColor: '#8B6914',
+  },
+  ratingButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  ratingLabel: {
+    fontSize: 13,
+    color: '#8B6914',
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 8,
   },
   input: {
-    marginVertical: 8,
-    backgroundColor: '#fff',
-  },
-  reviewInput: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 10,
     textAlignVertical: 'top',
   },
-  statusSection: {
-    gap: 12,
-  },
   radioGroup: {
-    gap: 8,
+    gap: 12,
   },
   radioOption: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+  },
+  radioButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#3a3a3a',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioButtonChecked: {
+    borderColor: '#8B6914',
+    backgroundColor: 'rgba(139, 105, 20, 0.1)',
+  },
+  radioButtonDot: {
+    color: '#8B6914',
+    fontSize: 12,
   },
   radioLabel: {
-    fontSize: 14,
-    color: '#333',
-    marginLeft: 8,
+    fontSize: 13,
+    color: '#ffffff',
+    flex: 1,
   },
   submitButton: {
-    marginVertical: 8,
-    paddingVertical: 6,
+    marginTop: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  submitButtonLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  spacer: {
+    height: 24,
   },
 })

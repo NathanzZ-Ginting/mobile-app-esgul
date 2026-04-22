@@ -1,11 +1,21 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { View, StyleSheet, ScrollView, Alert, Text, TouchableOpacity } from 'react-native'
 import { TextInput, Button, Menu } from 'react-native-paper'
+import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { useAuth } from '../../context/AuthContext'
+import { supabase } from '../../services/supabaseClient'
+
+interface Service {
+  id: string
+  title: string
+  price: number
+}
 
 export const BookingScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { user } = useAuth()
   const [formData, setFormData] = useState({
-    name: 'Yoel',
     service: '',
+    serviceId: '',
     date: new Date().toISOString().split('T')[0],
     time: '09:00',
     vehicleType: '',
@@ -14,21 +24,68 @@ export const BookingScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     notes: '',
   })
 
+  const [services, setServices] = useState<Service[]>([])
   const [serviceMenuVisible, setServiceMenuVisible] = useState(false)
   const [vehicleMenuVisible, setVehicleMenuVisible] = useState(false)
-  const services = ['Oil Change', 'Tire Installation', 'Battery Replacement', 'Full Service']
+  const [timeMenuVisible, setTimeMenuVisible] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const timeSlots = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00']
+
+  useEffect(() => {
+    fetchServices()
+  }, [])
+
+  const fetchServices = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('id, title, price')
+      
+      if (error) throw error
+      setServices(data || [])
+    } catch (error) {
+      console.error('Error fetching services:', error)
+    }
+  }
 
   const handleSubmit = async () => {
-    if (!formData.service || !formData.vehicleType || !formData.vehicleBrand || !formData.vehiclePlate) {
+    if (!formData.serviceId || !formData.vehicleType || !formData.vehicleBrand || !formData.vehiclePlate) {
       Alert.alert('Error', 'Please fill all required fields')
       return
     }
 
+    if (!user?.id) {
+      Alert.alert('Error', 'User not authenticated')
+      return
+    }
+
     try {
+      setIsSubmitting(true)
+      
+      const selectedService = services.find(s => s.id === formData.serviceId)
+      const totalPrice = selectedService?.price || 0
+
+      const { error } = await supabase
+        .from('bookings')
+        .insert({
+          user_id: user.id,
+          service_id: formData.serviceId,
+          vehicle_type: formData.vehicleType,
+          vehicle_brand: formData.vehicleBrand,
+          vehicle_plate: formData.vehiclePlate,
+          booking_date: formData.date,
+          booking_time: formData.time,
+          notes: formData.notes,
+          status: 'Pending',
+          total_price: totalPrice,
+        })
+
+      if (error) throw error
+
       Alert.alert('Success', 'Booking created successfully!')
       setFormData({
-        name: 'Yoel',
         service: '',
+        serviceId: '',
         date: new Date().toISOString().split('T')[0],
         time: '09:00',
         vehicleType: '',
@@ -38,208 +95,221 @@ export const BookingScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       })
       navigation.navigate('BookingHistory')
     } catch (error: any) {
-      Alert.alert('Error', error.message)
+      console.error('Error creating booking:', error)
+      Alert.alert('Error', error.message || 'Failed to create booking')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Book Service</Text>
-        <Text style={styles.headerSubtitle}>Fill in your service details</Text>
+    <ScrollView 
+      style={styles.container} 
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
+    >
+      {/* Header Card */}
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>Book Your Service</Text>
+        <Text style={styles.headerSubtitle}>Schedule a maintenance for your vehicle</Text>
       </View>
 
-      <View style={styles.content}>
-        {/* Form Card */}
-        <View style={styles.formCard}>
-          {/* Name Field */}
-          <View style={styles.fieldSection}>
-            <Text style={styles.fieldLabel}>📝 Nama</Text>
+      {/* Service Selection Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Select Service</Text>
+        </View>
+
+        <View style={styles.card}>
+          <Menu
+            visible={serviceMenuVisible}
+            onDismiss={() => setServiceMenuVisible(false)}
+            anchor={
+              <TouchableOpacity
+                onPress={() => setServiceMenuVisible(true)}
+                style={styles.menuButton}
+              >
+                <MaterialCommunityIcons name="wrench" size={20} color="#8B6914" />
+                <View style={styles.menuButtonContent}>
+                  <Text style={styles.menuButtonLabel}>Service Type</Text>
+                  <Text style={[styles.menuButtonValue, { color: formData.service ? '#8B6914' : '#b0b0b0' }]}>
+                    {formData.service || 'Choose a service'}
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={20} color="#8B6914" />
+              </TouchableOpacity>
+            }
+          >
+            {services.map((s) => (
+              <Menu.Item
+                key={s.id}
+                onPress={() => {
+                  setFormData({ ...formData, service: s.title, serviceId: s.id })
+                  setServiceMenuVisible(false)
+                }}
+                title={s.title}
+              />
+            ))}
+          </Menu>
+        </View>
+      </View>
+
+      {/* Vehicle Information Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Vehicle Details</Text>
+        </View>
+
+        <View style={styles.card}>
+          {/* Vehicle Type */}
+          <Menu
+            visible={vehicleMenuVisible}
+            onDismiss={() => setVehicleMenuVisible(false)}
+            anchor={
+              <TouchableOpacity
+                onPress={() => setVehicleMenuVisible(true)}
+                style={styles.menuButton}
+              >
+                <MaterialCommunityIcons name="car" size={20} color="#8B6914" />
+                <View style={styles.menuButtonContent}>
+                  <Text style={styles.menuButtonLabel}>Vehicle Type</Text>
+                  <Text style={[styles.menuButtonValue, { color: formData.vehicleType ? '#8B6914' : '#b0b0b0' }]}>
+                    {formData.vehicleType || 'Choose vehicle'}
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={20} color="#8B6914" />
+              </TouchableOpacity>
+            }
+          >
+            {['Car', 'Truck', 'Motorcycle'].map((v) => (
+              <Menu.Item
+                key={v}
+                onPress={() => {
+                  setFormData({ ...formData, vehicleType: v })
+                  setVehicleMenuVisible(false)
+                }}
+                title={v}
+              />
+            ))}
+          </Menu>
+
+          <View style={styles.divider} />
+
+          {/* Brand and Plate Row */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Vehicle Brand</Text>
             <TextInput
-              value={formData.name}
-              onChangeText={(v) => setFormData({ ...formData, name: v })}
+              placeholder="e.g., Toyota"
+              value={formData.vehicleBrand}
+              onChangeText={(text) => setFormData({ ...formData, vehicleBrand: text })}
               style={styles.input}
-              mode="outlined"
-              outlineColor="#e8e8e8"
-              activeOutlineColor="#2c5aa0"
-              textColor="#1a1a1a"
-              theme={{
-                colors: {
-                  primary: '#2c5aa0',
-                  background: '#ffffff',
-                  surface: '#ffffff',
-                },
-              }}
+              placeholderTextColor="#6a6a6a"
             />
           </View>
 
-          {/* Service Selection */}
-          <View style={styles.fieldSection}>
-            <Text style={styles.fieldLabel}>🔧 Layanan</Text>
+          <View style={styles.divider} />
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>License Plate</Text>
+            <TextInput
+              placeholder="e.g., ABC-123"
+              value={formData.vehiclePlate}
+              onChangeText={(text) => setFormData({ ...formData, vehiclePlate: text })}
+              style={styles.input}
+              placeholderTextColor="#6a6a6a"
+            />
+          </View>
+        </View>
+      </View>
+
+      {/* Schedule Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Schedule</Text>
+        </View>
+
+        <View style={styles.card}>
+          {/* Date (Read Only) */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Date</Text>
+            <TouchableOpacity style={styles.readOnlyButton}>
+              <MaterialCommunityIcons name="calendar" size={18} color="#8B6914" />
+              <Text style={styles.readOnlyText}>{formData.date}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Time */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Time</Text>
             <Menu
-              visible={serviceMenuVisible}
-              onDismiss={() => setServiceMenuVisible(false)}
+              visible={timeMenuVisible}
+              onDismiss={() => setTimeMenuVisible(false)}
               anchor={
                 <TouchableOpacity
-                  onPress={() => setServiceMenuVisible(true)}
+                  onPress={() => setTimeMenuVisible(true)}
                   style={styles.selectButton}
                 >
-                  <Text style={[styles.selectText, { color: formData.service ? '#1a1a1a' : '#a0a0a0' }]}>
-                    {formData.service || 'Select Service'}
+                  <MaterialCommunityIcons name="clock-outline" size={18} color="#8B6914" />
+                  <Text style={[styles.selectText, { color: formData.time ? '#ffffff' : '#b0b0b0' }]}>
+                    {formData.time || 'Select time'}
                   </Text>
-                  <Text style={styles.selectArrow}>▼</Text>
                 </TouchableOpacity>
               }
             >
-              {services.map((s) => (
+              {timeSlots.map((t) => (
                 <Menu.Item
-                  key={s}
+                  key={t}
                   onPress={() => {
-                    setFormData({ ...formData, service: s })
-                    setServiceMenuVisible(false)
+                    setFormData({ ...formData, time: t })
+                    setTimeMenuVisible(false)
                   }}
-                  title={s}
+                  title={t}
                 />
               ))}
             </Menu>
           </View>
-
-          {/* Date and Time Row */}
-          <View style={styles.rowContainer}>
-            <View style={[styles.fieldSection, { flex: 1 }]}>
-              <Text style={styles.fieldLabel}>📅 Tanggal</Text>
-              <View style={styles.readOnlyInput}>
-                <Text style={styles.readOnlyText}>{formData.date}</Text>
-              </View>
-            </View>
-            <View style={[styles.fieldSection, { flex: 1, marginLeft: 12 }]}>
-              <Text style={styles.fieldLabel}>⏰ Waktu</Text>
-              <View style={styles.readOnlyInput}>
-                <Text style={styles.readOnlyText}>{formData.time}</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Vehicle Type */}
-          <View style={styles.fieldSection}>
-            <Text style={styles.fieldLabel}>🚗 Jenis Kendaraan</Text>
-            <Menu
-              visible={vehicleMenuVisible}
-              onDismiss={() => setVehicleMenuVisible(false)}
-              anchor={
-                <TouchableOpacity
-                  onPress={() => setVehicleMenuVisible(true)}
-                  style={styles.selectButton}
-                >
-                  <Text style={[styles.selectText, { color: formData.vehicleType ? '#1a1a1a' : '#a0a0a0' }]}>
-                    {formData.vehicleType || 'Select Vehicle Type'}
-                  </Text>
-                  <Text style={styles.selectArrow}>▼</Text>
-                </TouchableOpacity>
-              }
-            >
-              <Menu.Item
-                onPress={() => {
-                  setFormData({ ...formData, vehicleType: 'Mobil' })
-                  setVehicleMenuVisible(false)
-                }}
-                title="🚗 Mobil"
-              />
-              <Menu.Item
-                onPress={() => {
-                  setFormData({ ...formData, vehicleType: 'Motor' })
-                  setVehicleMenuVisible(false)
-                }}
-                title="🏍️ Motor"
-              />
-            </Menu>
-          </View>
-
-          {/* Vehicle Brand */}
-          <View style={styles.fieldSection}>
-            <Text style={styles.fieldLabel}>🏷️ Merk Kendaraan</Text>
-            <TextInput
-              value={formData.vehicleBrand}
-              onChangeText={(v) => setFormData({ ...formData, vehicleBrand: v })}
-              placeholder="e.g., Toyota, Honda"
-              style={styles.input}
-              mode="outlined"
-              outlineColor="#e8e8e8"
-              activeOutlineColor="#2c5aa0"
-              textColor="#1a1a1a"
-              placeholderTextColor="#a0a0a0"
-              theme={{
-                colors: {
-                  primary: '#2c5aa0',
-                  background: '#ffffff',
-                  surface: '#ffffff',
-                },
-              }}
-            />
-          </View>
-
-          {/* Vehicle Plate */}
-          <View style={styles.fieldSection}>
-            <Text style={styles.fieldLabel}>🔢 Plat Nomor</Text>
-            <TextInput
-              value={formData.vehiclePlate}
-              onChangeText={(v) => setFormData({ ...formData, vehiclePlate: v })}
-              placeholder="e.g., B 1234 ABC"
-              style={styles.input}
-              mode="outlined"
-              outlineColor="#e8e8e8"
-              activeOutlineColor="#2c5aa0"
-              textColor="#1a1a1a"
-              placeholderTextColor="#a0a0a0"
-              theme={{
-                colors: {
-                  primary: '#2c5aa0',
-                  background: '#ffffff',
-                  surface: '#ffffff',
-                },
-              }}
-            />
-          </View>
-
-          {/* Additional Notes */}
-          <View style={styles.fieldSection}>
-            <Text style={styles.fieldLabel}>📝 Catatan Tambahan</Text>
-            <TextInput
-              value={formData.notes}
-              onChangeText={(v) => setFormData({ ...formData, notes: v })}
-              placeholder="Describe your service needs..."
-              style={[styles.input, styles.notesInput]}
-              mode="outlined"
-              outlineColor="#e8e8e8"
-              activeOutlineColor="#2c5aa0"
-              textColor="#1a1a1a"
-              placeholderTextColor="#a0a0a0"
-              multiline
-              numberOfLines={4}
-              theme={{
-                colors: {
-                  primary: '#2c5aa0',
-                  background: '#ffffff',
-                  surface: '#ffffff',
-                },
-              }}
-            />
-          </View>
-
-          {/* Submit Button */}
-          <Button
-            mode="contained"
-            onPress={handleSubmit}
-            style={styles.submitButton}
-            buttonColor="#2c5aa0"
-            textColor="#ffffff"
-            labelStyle={styles.buttonLabel}
-          >
-            Confirm Booking
-          </Button>
         </View>
       </View>
+
+      {/* Additional Notes Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Additional Notes</Text>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.fieldGroup}>
+            <TextInput
+              placeholder="Add any special requests or notes..."
+              value={formData.notes}
+              onChangeText={(text) => setFormData({ ...formData, notes: text })}
+              multiline
+              numberOfLines={4}
+              style={[styles.input, styles.notesInput]}
+              placeholderTextColor="#6a6a6a"
+            />
+          </View>
+        </View>
+      </View>
+
+      {/* Submit Button */}
+      <View style={styles.section}>
+        <Button
+          mode="contained"
+          onPress={handleSubmit}
+          disabled={isSubmitting}
+          style={styles.submitButton}
+          buttonColor="#8B6914"
+          textColor="#ffffff"
+          labelStyle={styles.submitButtonLabel}
+        >
+          {isSubmitting ? 'Booking...' : 'Confirm Booking'}
+        </Button>
+      </View>
+
+      <View style={styles.spacer} />
     </ScrollView>
   )
 }
@@ -247,106 +317,160 @@ export const BookingScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#1f1f1f',
   },
-  header: {
-    backgroundColor: '#2c5aa0',
+  scrollContent: {
+    flexGrow: 1,
+  },
+  // Header Card
+  headerCard: {
+    backgroundColor: '#2a2a2a',
     paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 24,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#3a3a3a',
+    marginBottom: 8,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: '#ffffff',
+    marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
-    marginTop: 4,
+    color: '#b0b0b0',
   },
-  content: {
+  // Section Styles
+  section: {
     paddingHorizontal: 24,
-    paddingVertical: 20,
+    paddingVertical: 16,
   },
-  formCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
-    padding: 20,
+  sectionHeader: {
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#ffffff',
+    letterSpacing: 0.3,
+  },
+  // Card Styles
+  card: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    gap: 16,
+    borderColor: '#3a3a3a',
+    overflow: 'hidden',
   },
-  fieldSection: {
-    gap: 6,
+  fieldGroup: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   fieldLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: '#8a8a8a',
+    marginBottom: 8,
     letterSpacing: 0.2,
   },
+  // Menu Button Styles
+  menuButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  menuButtonIcon: {
+    fontSize: 20,
+  },
+  menuButtonContent: {
+    flex: 1,
+    gap: 2,
+  },
+  menuButtonLabel: {
+    fontSize: 12,
+    color: '#8a8a8a',
+    fontWeight: '600',
+  },
+  menuButtonValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#ffffff',
+  },
+  menuButtonArrow: {
+    fontSize: 16,
+    color: '#8B6914',
+    fontWeight: '600',
+  },
+  // Input Styles
   input: {
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
+    backgroundColor: '#1f1f1f',
+    borderRadius: 8,
     fontSize: 14,
   },
   notesInput: {
     textAlignVertical: 'top',
     minHeight: 100,
   },
-  rowContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
+  // Select Button
   selectButton: {
     borderWidth: 1,
-    borderColor: '#e8e8e8',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    borderColor: '#3a3a3a',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#1f1f1f',
+    gap: 10,
+  },
+  selectIcon: {
+    fontSize: 18,
   },
   selectText: {
     fontSize: 14,
     fontWeight: '500',
-    flex: 1,
   },
-  selectArrow: {
-    fontSize: 12,
-    color: '#2c5aa0',
-    fontWeight: '600',
-  },
-  readOnlyInput: {
+  // Read Only Button
+  readOnlyButton: {
     borderWidth: 1,
-    borderColor: '#e8e8e8',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    backgroundColor: '#f8f8f8',
-    justifyContent: 'center',
+    borderColor: '#3a3a3a',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#1f1f1f',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  readOnlyIcon: {
+    fontSize: 18,
   },
   readOnlyText: {
     fontSize: 14,
-    color: '#1a1a1a',
+    color: '#ffffff',
     fontWeight: '500',
   },
-  submitButton: {
-    marginTop: 8,
-    paddingVertical: 8,
-    borderRadius: 10,
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: '#3a3a3a',
+    marginHorizontal: 16,
   },
-  buttonLabel: {
-    fontSize: 16,
+  // Submit Button
+  submitButton: {
+    borderRadius: 10,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  submitButtonLabel: {
+    fontSize: 14,
     fontWeight: '600',
-    letterSpacing: 0.5,
+  },
+  spacer: {
+    height: 24,
   },
 })

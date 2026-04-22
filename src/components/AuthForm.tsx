@@ -48,15 +48,16 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             style={styles.input}
             mode="outlined"
             editable={!isLoading}
-            outlineColor="#e8e8e8"
-            activeOutlineColor="#2c5aa0"
-            textColor="#1a1a1a"
-            placeholderTextColor="#a0a0a0"
+            outlineColor="#666666"
+            activeOutlineColor="#8B6914"
+            textColor="#e0e0e0"
+            placeholderTextColor="#999999"
+            labelStyle={styles.label}
             theme={{
               colors: {
-                primary: '#2c5aa0',
-                background: '#ffffff',
-                surface: '#ffffff',
+                primary: '#8B6914',
+                background: 'rgba(45, 45, 45, 0.95)',
+                surface: 'rgba(45, 45, 45, 0.95)',
               },
             }}
           />
@@ -68,7 +69,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         loading={isLoading}
         disabled={isLoading}
         style={styles.button}
-        buttonColor="#2c5aa0"
+        buttonColor="#6B5D47"
         textColor="#ffffff"
         labelStyle={styles.buttonLabel}
       >
@@ -90,21 +91,24 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
   },
   inputContainer: {
-    marginVertical: 4,
+    marginVertical: 3,
   },
   input: {
-    backgroundColor: '#ffffff',
+    backgroundColor: 'rgba(55, 55, 55, 0.95)',
     borderRadius: 10,
     fontSize: 14,
   },
+  label: {
+    fontSize: 12,
+  },
   button: {
-    marginTop: 16,
-    paddingVertical: 6,
+    marginTop: 12,
+    paddingVertical: 5,
     borderRadius: 10,
   },
   buttonLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
 })

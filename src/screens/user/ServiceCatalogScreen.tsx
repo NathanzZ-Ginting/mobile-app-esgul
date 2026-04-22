@@ -1,62 +1,56 @@
-import React, { useState } from 'react'
-import { View, StyleSheet, FlatList, Text } from 'react-native'
+import React, { useState, useEffect } from 'react'
+import { View, StyleSheet, FlatList, Text, ActivityIndicator } from 'react-native'
 import { Card, Chip } from 'react-native-paper'
+import { supabase } from '../../services/supabaseClient'
 
 interface Service {
   id: string
   title: string
   description: string
   price: number
-  discountPercent?: number
-  estimatedDuration: number
+  discount_percent?: number
+  estimated_duration: number
 }
 
 export const ServiceCatalogScreen: React.FC = () => {
-  const [services] = useState<Service[]>([
-    {
-      id: '1',
-      title: 'Oil Change',
-      description: 'Complete oil and filter replacement',
-      price: 150000,
-      discountPercent: 20,
-      estimatedDuration: 30,
-    },
-    {
-      id: '2',
-      title: 'Tire Installation',
-      description: 'Professional tire installation service',
-      price: 200000,
-      estimatedDuration: 45,
-    },
-    {
-      id: '3',
-      title: 'Battery Replacement',
-      description: 'Replace vehicle battery',
-      price: 350000,
-      estimatedDuration: 20,
-    },
-    {
-      id: '4',
-      title: 'Full Service',
-      description: 'Complete vehicle maintenance and checkup',
-      price: 500000,
-      estimatedDuration: 120,
-    },
-  ])
+  const [services, setServices] = useState<Service[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchServices()
+  }, [])
+
+  const fetchServices = async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('services')
+        .select('id, title, description, price, discount_percent, estimated_duration')
+        .order('title', { ascending: true })
+
+      if (error) throw error
+      setServices(data || [])
+    } catch (error) {
+      console.error('Error fetching services:', error)
+      setServices([])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const renderService = ({ item }: { item: Service }) => {
-    const discountedPrice = item.discountPercent
-      ? Math.round(item.price * (1 - item.discountPercent / 100))
+    const discountedPrice = item.discount_percent
+      ? Math.round(item.price * (1 - item.discount_percent / 100))
       : null
 
     return (
       <Card style={styles.serviceCard}>
         <Card.Content>
-          <View style={styles.header}>
+          <View style={styles.cardHeader}>
             <Text style={styles.title}>{item.title}</Text>
-            {item.discountPercent && (
+            {item.discount_percent && (
               <Chip
-                label={`${item.discountPercent}% OFF`}
+                label={`${item.discount_percent}% OFF`}
                 style={styles.discountChip}
               />
             )}
@@ -67,7 +61,7 @@ export const ServiceCatalogScreen: React.FC = () => {
           <View style={styles.details}>
             <View style={styles.detailRow}>
               <Text style={styles.label}>Duration:</Text>
-              <Text style={styles.value}>{item.estimatedDuration} min</Text>
+              <Text style={styles.value}>{item.estimated_duration} min</Text>
             </View>
 
             <View style={styles.priceRow}>
@@ -97,13 +91,23 @@ export const ServiceCatalogScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.pageTitle}>Service Catalog</Text>
       </View>
-      <FlatList
-        data={services}
-        renderItem={renderService}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        scrollEnabled={true}
-      />
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#8B6914" />
+        </View>
+      ) : services.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No services available</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={services}
+          renderItem={renderService}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          scrollEnabled={true}
+        />
+      )}
     </View>
   )
 }
@@ -111,17 +115,19 @@ export const ServiceCatalogScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#1f1f1f',
   },
   header: {
-    backgroundColor: '#1976d2',
+    backgroundColor: '#2a2a2a',
     padding: 16,
     paddingTop: 40,
+    borderBottomWidth: 2,
+    borderBottomColor: '#8B6914',
   },
   pageTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#ffffff',
   },
   list: {
     padding: 12,
@@ -129,8 +135,11 @@ const styles = StyleSheet.create({
   },
   serviceCard: {
     marginVertical: 4,
+    backgroundColor: '#2a2a2a',
+    borderWidth: 1,
+    borderColor: '#3a3a3a',
   },
-  header: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -139,20 +148,20 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#ffffff',
   },
   discountChip: {
     backgroundColor: '#FF5252',
   },
   description: {
     fontSize: 13,
-    color: '#666',
+    color: '#b0b0b0',
     marginBottom: 12,
     lineHeight: 18,
   },
   details: {
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: '#3a3a3a',
     paddingTop: 12,
     gap: 8,
   },
@@ -162,11 +171,11 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    color: '#999',
+    color: '#6a6a6a',
   },
   value: {
     fontSize: 12,
-    color: '#333',
+    color: '#ffffff',
     fontWeight: '500',
   },
   priceRow: {
@@ -179,13 +188,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   originalPrice: {
-    color: '#999',
+    color: '#666',
     textDecorationLine: 'line-through',
   },
   discountedPrice: {
     color: '#FF5252',
   },
   currentPrice: {
-    color: '#1976d2',
+    color: '#8B6914',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8a8a8a',
   },
 })
