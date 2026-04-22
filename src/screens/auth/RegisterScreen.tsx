@@ -19,8 +19,8 @@ export const RegisterScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
     setLoading(true)
     try {
       await register(credentials.email, credentials.password, credentials.name)
-      Alert.alert('Success', 'Account created. Please log in.')
-      navigation.navigate('Login')
+      Alert.alert('Success', 'Account created successfully!')
+      // Don't navigate - AuthContext will auto-redirect when user is set
     } catch (error: any) {
       Alert.alert('Registration Error', error.message)
     } finally {
