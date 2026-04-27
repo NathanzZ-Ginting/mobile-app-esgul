@@ -26,6 +26,7 @@ interface Service {
 export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth()
   const [showReviewModal, setShowReviewModal] = useState(false)
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [rating, setRating] = useState(5)
   const [review, setReview] = useState('')
   const [reviewCount, setReviewCount] = useState(0)
@@ -155,6 +156,17 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       )
       return
     }
+
+    const bookingToReview = upcomingBookings.length > 0 ? upcomingBookings[0] : lastBooking
+    
+    if (!bookingToReview) {
+      Alert.alert('Error', 'No bookings available to review')
+      return
+    }
+
+    setSelectedBooking(bookingToReview)
+    setReview('')
+    setRating(5)
     setShowReviewModal(true)
   }
 
@@ -167,13 +179,38 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       return
     }
 
-    try {
-      // Save review timestamp
-      const stored = await AsyncStorage.getItem('reviewData')
-      const data = stored ? JSON.parse(stored) : { timestamps: [] }
-      data.timestamps.push(Date.now())
+    if (!selectedBooking) {
+      Alert.alert('Error', 'No booking selected')
+      return
+    }
 
-      await AsyncStorage.setItem('reviewData', JSON.stringify(data))
+    try {
+      console.log('💬 Submitting review for booking:', selectedBooking.id)
+      
+      // Save to Supabase reviews table
+      const { data, error } = await supabase
+        .from('reviews')
+        .insert({
+          booking_id: selectedBooking.id,
+          rating: rating,
+          review_text: review.trim(),
+        })
+        .select()
+
+      if (error) {
+        console.error('❌ Supabase error:', error)
+        Alert.alert('Error', 'Failed to submit review')
+        return
+      }
+
+      console.log('✅ Review saved to Supabase:', data)
+
+      // Save review timestamp for rate limiting
+      const stored = await AsyncStorage.getItem('reviewData')
+      const reviewData = stored ? JSON.parse(stored) : { timestamps: [] }
+      reviewData.timestamps.push(Date.now())
+
+      await AsyncStorage.setItem('reviewData', JSON.stringify(reviewData))
 
       Alert.alert('Thank You', 'Your review has been submitted!')
       setReview('')
@@ -183,8 +220,8 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       // Reload review count
       loadReviewCount()
     } catch (error) {
-      Alert.alert('Error', 'Failed to submit review')
       console.error('Error submitting review:', error)
+      Alert.alert('Error', 'Failed to submit review')
     }
   }
 

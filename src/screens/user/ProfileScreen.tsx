@@ -15,10 +15,16 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     phone: user?.phone || '',
     address: user?.address || '',
   })
+  const [stats, setStats] = useState({
+    bookings: 0,
+    rating: 0,
+    reviews: 0,
+  })
 
-  // Load latest user data from Supabase
+  // Load latest user data and stats from Supabase
   useEffect(() => {
     loadUserProfile()
+    loadUserStats()
   }, [user?.id])
 
   const loadUserProfile = async () => {
@@ -40,6 +46,49 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       }
     } catch (error) {
       console.error('Error loading user profile:', error)
+    }
+  }
+
+  const loadUserStats = async () => {
+    try {
+      if (!user?.id) return
+
+      // Get total bookings
+      const { count: bookingCount } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+
+      // Get reviews for user's bookings
+      const { data: reviewsData } = await supabase
+        .from('reviews')
+        .select('rating')
+        .in(
+          'booking_id',
+          (
+            await supabase
+              .from('bookings')
+              .select('id')
+              .eq('user_id', user.id)
+          ).data?.map((b: any) => b.id) || []
+        )
+
+      const reviewCount = reviewsData?.length || 0
+      const avgRating =
+        reviewCount > 0
+          ? (
+              reviewsData?.reduce((sum: number, r: any) => sum + r.rating, 0) /
+              reviewCount
+            ).toFixed(1)
+          : 0
+
+      setStats({
+        bookings: bookingCount || 0,
+        rating: parseFloat(String(avgRating)) || 0,
+        reviews: reviewCount,
+      })
+    } catch (error) {
+      console.error('Error loading user stats:', error)
     }
   }
 
@@ -147,17 +196,17 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>12</Text>
+            <Text style={styles.statNumber}>{stats.bookings}</Text>
             <Text style={styles.statLabel}>Bookings</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>4.8</Text>
+            <Text style={styles.statNumber}>{stats.rating > 0 ? stats.rating : '—'}</Text>
             <Text style={styles.statLabel}>Rating</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>8</Text>
+            <Text style={styles.statNumber}>{stats.reviews}</Text>
             <Text style={styles.statLabel}>Reviews</Text>
           </View>
         </View>

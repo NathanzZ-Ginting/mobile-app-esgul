@@ -36,6 +36,15 @@ interface Service {
   estimated_duration: number
 }
 
+interface Review {
+  id: string
+  booking_id: string
+  rating: number
+  review_text?: string
+  created_at: string
+  bookings?: { users?: { name: string }; services?: { title: string } }
+}
+
 interface DashboardStats {
   totalBookings: number
   pendingBookings: number
@@ -43,7 +52,7 @@ interface DashboardStats {
   totalServices: number
 }
 
-type TabType = 'overview' | 'bookings' | 'services'
+type TabType = 'overview' | 'bookings' | 'services' | 'reviews'
 
 export const AdminDashboardScreen: React.FC = () => {
   const { logout } = useAuth()
@@ -51,6 +60,7 @@ export const AdminDashboardScreen: React.FC = () => {
   const [menuVisible, setMenuVisible] = useState<{ [key: string]: boolean }>({})
   const [bookings, setBookings] = useState<AdminBooking[]>([])
   const [services, setServices] = useState<Service[]>([])
+  const [reviews, setReviews] = useState<Review[]>([])
   const [stats, setStats] = useState<DashboardStats>({
     totalBookings: 0,
     pendingBookings: 0,
@@ -66,13 +76,16 @@ export const AdminDashboardScreen: React.FC = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
-      const [bookingsData, servicesDataResult] = await Promise.all([
+      const [bookingsData, servicesDataResult, reviewsData] = await Promise.all([
         supabase
           .from('bookings')
           .select('id, user_id, service_id, booking_date, booking_time, status, users(name), services(title)'),
         supabase
           .from('services')
           .select('id, title, description, price, estimated_duration'),
+        supabase
+          .from('reviews')
+          .select('id, booking_id, rating, review_text, created_at, bookings(users(name), services(title))'),
       ])
 
       if (bookingsData.error) throw bookingsData.error
@@ -95,9 +108,11 @@ export const AdminDashboardScreen: React.FC = () => {
 
       const bookingsList = (bookingsData.data || []) as AdminBooking[]
       const servicesList = (servicesData.data || []) as Service[]
+      const reviewsList = (reviewsData.data || []) as Review[]
 
       setBookings(bookingsList)
       setServices(servicesList)
+      setReviews(reviewsList)
 
       // Calculate stats
       setStats({
@@ -122,6 +137,7 @@ export const AdminDashboardScreen: React.FC = () => {
     price: 0,
     estimated_duration: 0,
   })
+  const [deleteServiceId, setDeleteServiceId] = useState<string | null>(null)
 
   const statuses = ['Pending', 'Confirmed', 'In Progress', 'Completed', 'Cancelled']
 
@@ -146,6 +162,20 @@ export const AdminDashboardScreen: React.FC = () => {
 
   const updateStatus = async (bookingId: string, newStatus: string) => {
     try {
+      // Find the current booking to check its status
+      const currentBooking = bookings.find((b) => b.id === bookingId)
+      if (!currentBooking) {
+        Alert.alert('Error', 'Booking not found')
+        return
+      }
+
+      // Prevent status changes if already completed or cancelled
+      if (currentBooking.status === 'Completed' || currentBooking.status === 'Cancelled') {
+        Alert.alert('Cannot Update', `Status cannot be changed from ${currentBooking.status}`)
+        setMenuVisible({ ...menuVisible, [bookingId]: false })
+        return
+      }
+
       const { error } = await supabase
         .from('bookings')
         .update({ status: newStatus })
@@ -198,8 +228,64 @@ export const AdminDashboardScreen: React.FC = () => {
   //   setEditingService(null)
   // }
 
-  const handleAddService = () => {
-    Alert.alert('Info', 'Service management is disabled. Services are loaded from database.')
+  const handleAddService = async () => {
+    if (!newService.title || !newService.description || !newService.price || !newService.estimated_duration) {
+      Alert.alert('Error', 'Please fill all fields')
+      return
+    }
+
+    try {
+      if (editingService) {
+        // Update existing service
+        const { error } = await supabase
+          .from('services')
+          .update({
+            title: newService.title,
+            description: newService.description,
+            price: newService.price,
+            estimated_duration: newService.estimated_duration,
+          })
+          .eq('id', editingService.id)
+
+        if (error) throw error
+
+        setServices((prev) =>
+          prev.map((s) => (s.id === editingService.id ? newService : s))
+        )
+        Alert.alert('Success', 'Service updated')
+      } else {
+        // Add new service
+        const { data, error } = await supabase
+          .from('services')
+          .insert({
+            title: newService.title,
+            description: newService.description,
+            price: newService.price,
+            estimated_duration: newService.estimated_duration,
+          })
+          .select()
+
+        if (error) throw error
+
+        if (data && data.length > 0) {
+          setServices((prev) => [...prev, data[0]])
+          Alert.alert('Success', 'Service added')
+        }
+      }
+
+      setShowServiceModal(false)
+      setNewService({
+        id: '',
+        title: '',
+        description: '',
+        price: 0,
+        estimated_duration: 0,
+      })
+      setEditingService(null)
+    } catch (error) {
+      console.error('Error saving service:', error)
+      Alert.alert('Error', 'Failed to save service')
+    }
   }
 
   const handleEditService = (service: Service) => {
@@ -209,17 +295,44 @@ export const AdminDashboardScreen: React.FC = () => {
   }
 
   const handleDeleteService = (serviceId: string) => {
-    Alert.alert('Delete Service', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        onPress: () => {
-          setServices((prev) => prev.filter((s) => s.id !== serviceId))
-          Alert.alert('Success', 'Service deleted')
-        },
-        style: 'destructive',
-      },
-    ])
+    console.log('🗑️ Delete button clicked for service:', serviceId)
+    setDeleteServiceId(serviceId)
+  }
+
+  const confirmDeleteService = async () => {
+    if (!deleteServiceId) return
+
+    console.log('🗑️ Delete confirmed for service:', deleteServiceId)
+    try {
+      console.log('📡 Sending delete request to Supabase for service:', deleteServiceId)
+      const { data, error, status } = await supabase
+        .from('services')
+        .delete()
+        .eq('id', deleteServiceId)
+        .select()
+
+      console.log('📡 Delete response:', { status, data, error })
+
+      if (error) {
+        console.error('❌ Delete error:', error)
+        Alert.alert('Error', error.message || 'Failed to delete service')
+        setDeleteServiceId(null)
+        return
+      }
+
+      console.log('✅ Service deleted successfully from DB')
+      setServices((prev) => {
+        const updated = prev.filter((s) => s.id !== deleteServiceId)
+        console.log('Updated services list, removed:', deleteServiceId)
+        return updated
+      })
+      Alert.alert('Success', 'Service deleted')
+      setDeleteServiceId(null)
+    } catch (error: any) {
+      console.error('❌ Exception during delete:', error?.message, error)
+      Alert.alert('Error', error?.message || 'Failed to delete service')
+      setDeleteServiceId(null)
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -278,26 +391,32 @@ export const AdminDashboardScreen: React.FC = () => {
         </View>
 
         {/* Bottom Row: Status Button */}
-        <Menu
-          visible={menuVisible[item.id] || false}
-          onDismiss={() => setMenuVisible({ ...menuVisible, [item.id]: false })}
-          anchor={
-            <TouchableOpacity
-              style={styles.statusChangeBtn}
-              onPress={() => setMenuVisible({ ...menuVisible, [item.id]: true })}
-            >
-              <Text style={styles.statusChangeBtnText}>Change Status</Text>
-            </TouchableOpacity>
-          }
-        >
-          {statuses.map((status) => (
-            <Menu.Item
-              key={status}
-              onPress={() => updateStatus(item.id, status)}
-              title={status}
-            />
-          ))}
-        </Menu>
+        {item.status !== 'Completed' && item.status !== 'Cancelled' ? (
+          <Menu
+            visible={menuVisible[item.id] || false}
+            onDismiss={() => setMenuVisible({ ...menuVisible, [item.id]: false })}
+            anchor={
+              <TouchableOpacity
+                style={styles.statusChangeBtn}
+                onPress={() => setMenuVisible({ ...menuVisible, [item.id]: true })}
+              >
+                <Text style={styles.statusChangeBtnText}>Change Status</Text>
+              </TouchableOpacity>
+            }
+          >
+            {statuses.map((status) => (
+              <Menu.Item
+                key={status}
+                onPress={() => updateStatus(item.id, status)}
+                title={status}
+              />
+            ))}
+          </Menu>
+        ) : (
+          <View style={[styles.statusChangeBtn, { opacity: 0.5 }]}>
+            <Text style={[styles.statusChangeBtnText, { color: '#999' }]}>Status Locked</Text>
+          </View>
+        )}
       </View>
     </View>
   )
@@ -341,6 +460,46 @@ export const AdminDashboardScreen: React.FC = () => {
     </View>
   )
 
+  const renderReview = ({ item }: { item: Review }) => {
+    const avgRating = reviews.length > 0 
+      ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+      : '0'
+    
+    return (
+      <View style={styles.bookingCard}>
+        <View style={styles.cardInner}>
+          <View style={styles.topRow}>
+            <View style={styles.userSection}>
+              <Text style={styles.userName}>
+                {item.bookings?.users?.name || 'Unknown User'}
+              </Text>
+              <Text style={styles.serviceText}>
+                {item.bookings?.services?.title || 'Service'}
+              </Text>
+            </View>
+            <View style={styles.ratingContainer}>
+              <MaterialCommunityIcons name="star" size={20} color="#FFD700" />
+              <Text style={styles.ratingText}>{item.rating}/5</Text>
+            </View>
+          </View>
+
+          {item.review_text && (
+            <View style={styles.reviewTextContainer}>
+              <Text style={styles.reviewText}>{item.review_text}</Text>
+            </View>
+          )}
+
+          <View style={styles.detailsRow}>
+            <MaterialCommunityIcons name="calendar" size={16} color="#8B6914" />
+            <Text style={styles.detail}>
+              {new Date(item.created_at).toLocaleDateString('id-ID')}
+            </Text>
+          </View>
+        </View>
+      </View>
+    )
+  }
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -358,7 +517,7 @@ export const AdminDashboardScreen: React.FC = () => {
 
       {/* Navigation Tabs */}
       <View style={styles.tabBar}>
-        {(['overview', 'bookings', 'services'] as TabType[]).map((tab) => (
+        {(['overview', 'bookings', 'services', 'reviews'] as TabType[]).map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.tabButton, activeTab === tab && styles.activeTabButton]}
@@ -457,7 +616,13 @@ export const AdminDashboardScreen: React.FC = () => {
             {/* Quick Stats */}
             <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Quick Overview</Text>
             <View style={styles.quickStatsContainer}>
-              <View style={styles.quickStatItem}>
+              <TouchableOpacity
+                style={styles.quickStatItem}
+                onPress={() => {
+                  console.log('Active Bookings clicked')
+                  setActiveTab('bookings')
+                }}
+              >
                 <View style={styles.quickStatIconBox}>
                   <MaterialCommunityIcons name="lightning-bolt" size={24} color="#8B6914" />
                 </View>
@@ -468,9 +633,15 @@ export const AdminDashboardScreen: React.FC = () => {
                   </Text>
                 </View>
                 <MaterialCommunityIcons name="chevron-right" size={24} color="#8B6914" />
-              </View>
+              </TouchableOpacity>
 
-              <View style={styles.quickStatItem}>
+              <TouchableOpacity
+                style={styles.quickStatItem}
+                onPress={() => {
+                  console.log('Need Attention clicked')
+                  setActiveTab('bookings')
+                }}
+              >
                 <View style={[styles.quickStatIconBox, { backgroundColor: '#fff3e0' }]}>
                   <MaterialCommunityIcons name="alert-circle-outline" size={24} color="#FF9800" />
                 </View>
@@ -479,9 +650,15 @@ export const AdminDashboardScreen: React.FC = () => {
                   <Text style={styles.quickStatValue}>{stats.pendingBookings}</Text>
                 </View>
                 <MaterialCommunityIcons name="chevron-right" size={24} color="#FF9800" />
-              </View>
+              </TouchableOpacity>
 
-              <View style={styles.quickStatItem}>
+              <TouchableOpacity
+                style={styles.quickStatItem}
+                onPress={() => {
+                  console.log('Avg. Rating clicked')
+                  setActiveTab('reviews')
+                }}
+              >
                 <View style={[styles.quickStatIconBox, { backgroundColor: '#e8f5e9' }]}>
                   <MaterialCommunityIcons name="star" size={24} color="#4CAF50" />
                 </View>
@@ -490,7 +667,7 @@ export const AdminDashboardScreen: React.FC = () => {
                   <Text style={styles.quickStatValue}>4.8</Text>
                 </View>
                 <MaterialCommunityIcons name="chevron-right" size={24} color="#4CAF50" />
-              </View>
+              </TouchableOpacity>
             </View>
 
             {/* Recent Bookings */}
@@ -522,8 +699,7 @@ export const AdminDashboardScreen: React.FC = () => {
           <View style={styles.section}>
             <View style={styles.serviceHeader}>
               <Text style={styles.sectionTitle}>Service Catalog</Text>
-              {/* Add service functionality disabled - loading real data from Supabase */}
-              {/* <TouchableOpacity
+              <TouchableOpacity
                 style={styles.addBtn}
                 onPress={() => {
                   setEditingService(null)
@@ -538,7 +714,7 @@ export const AdminDashboardScreen: React.FC = () => {
                 }}
               >
                 <Text style={styles.addBtnText}>+ Add Service</Text>
-              </TouchableOpacity> */}
+              </TouchableOpacity>
             </View>
             {services.length === 0 ? (
               <View style={styles.emptyContainer}>
@@ -548,6 +724,35 @@ export const AdminDashboardScreen: React.FC = () => {
             <FlatList
               data={services}
               renderItem={renderService}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+              contentContainerStyle={styles.listContainer}
+            />
+            )}
+          </View>
+        )}
+
+        {activeTab === 'reviews' && (
+          <View style={styles.section}>
+            <View style={styles.serviceHeader}>
+              <Text style={styles.sectionTitle}>Customer Reviews</Text>
+              <View style={styles.avgRatingBadge}>
+                <MaterialCommunityIcons name="star" size={18} color="#FFD700" />
+                <Text style={styles.avgRatingText}>
+                  {reviews.length > 0 
+                    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+                    : '0'}
+                </Text>
+              </View>
+            </View>
+            {reviews.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No reviews yet</Text>
+              </View>
+            ) : (
+            <FlatList
+              data={reviews}
+              renderItem={renderReview}
               keyExtractor={(item) => item.id}
               scrollEnabled={false}
               contentContainerStyle={styles.listContainer}
@@ -576,12 +781,12 @@ export const AdminDashboardScreen: React.FC = () => {
             <ScrollView style={styles.modalForm}>
               <TextInput
                 label="Service Name"
-                value={newService.name}
-                onChangeText={(text) => setNewService({ ...newService, name: text })}
+                value={newService.title}
+                onChangeText={(text) => setNewService({ ...newService, title: text })}
                 mode="outlined"
                 outlineColor="#e8e8e8"
                 activeOutlineColor="#2c5aa0"
-                textColor="#1a1a1a"
+                textColor="#ffffff"
                 style={styles.input}
               />
 
@@ -592,7 +797,7 @@ export const AdminDashboardScreen: React.FC = () => {
                 mode="outlined"
                 outlineColor="#e8e8e8"
                 activeOutlineColor="#2c5aa0"
-                textColor="#1a1a1a"
+                textColor="#ffffff"
                 multiline
                 numberOfLines={3}
                 style={[styles.input, { marginTop: 12 }]}
@@ -608,18 +813,21 @@ export const AdminDashboardScreen: React.FC = () => {
                 mode="outlined"
                 outlineColor="#e8e8e8"
                 activeOutlineColor="#2c5aa0"
-                textColor="#1a1a1a"
+                textColor="#ffffff"
                 style={[styles.input, { marginTop: 12 }]}
               />
 
               <TextInput
-                label="Duration (e.g., 30 min)"
-                value={newService.duration}
-                onChangeText={(text) => setNewService({ ...newService, duration: text })}
+                label="Duration (minutes)"
+                value={newService.estimated_duration.toString()}
+                onChangeText={(text) =>
+                  setNewService({ ...newService, estimated_duration: parseInt(text) || 0 })
+                }
+                keyboardType="numeric"
                 mode="outlined"
                 outlineColor="#e8e8e8"
                 activeOutlineColor="#2c5aa0"
-                textColor="#1a1a1a"
+                textColor="#ffffff"
                 style={[styles.input, { marginTop: 12, marginBottom: 24 }]}
               />
             </ScrollView>
@@ -635,6 +843,34 @@ export const AdminDashboardScreen: React.FC = () => {
                 <Text style={styles.submitBtnText}>
                   {editingService ? 'Update' : 'Add'}
                 </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Service Confirmation Modal */}
+      <Modal visible={deleteServiceId !== null} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.logoutModalContent}>
+            <Text style={styles.logoutModalTitle}>Delete Service</Text>
+            <Text style={styles.logoutModalMessage}>
+              Are you sure you want to delete this service?
+            </Text>
+
+            <View style={styles.logoutModalButtons}>
+              <TouchableOpacity
+                style={styles.logoutCancelButton}
+                onPress={() => setDeleteServiceId(null)}
+              >
+                <Text style={styles.logoutCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.logoutConfirmButton, { backgroundColor: '#F44336' }]}
+                onPress={confirmDeleteService}
+              >
+                <Text style={styles.logoutConfirmButtonText}>Delete</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1217,5 +1453,49 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     color: '#8a8a8a',
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  ratingText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFD700',
+  },
+  reviewTextContainer: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(139, 105, 20, 0.1)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#8B6914',
+    borderRadius: 4,
+  },
+  reviewText: {
+    fontSize: 13,
+    color: '#e0e0e0',
+    lineHeight: 18,
+  },
+  avgRatingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  avgRatingText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFD700',
   },
 })

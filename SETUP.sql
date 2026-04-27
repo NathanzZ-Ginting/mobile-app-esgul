@@ -73,7 +73,7 @@ COMMENT ON COLUMN services.price IS 'Price in IDR (Indonesian Rupiah)';
 CREATE TABLE IF NOT EXISTS bookings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  service_id UUID NOT NULL REFERENCES services(id),
+  service_id UUID NOT NULL REFERENCES services(id) ON DELETE CASCADE,
   vehicle_type VARCHAR NOT NULL,
   vehicle_brand VARCHAR,
   vehicle_plate VARCHAR,
@@ -248,6 +248,18 @@ CREATE POLICY "Users can view own reviews"
       SELECT 1 FROM bookings 
       WHERE bookings.id = reviews.booking_id 
       AND bookings.user_id = auth.uid()
+    )
+  );
+
+-- Reviews: Admin can view all reviews
+DROP POLICY IF EXISTS "Admin can view all reviews" ON reviews;
+CREATE POLICY "Admin can view all reviews"
+  ON reviews FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE users.id = auth.uid() 
+      AND users.role = 'admin'
     )
   );
 
