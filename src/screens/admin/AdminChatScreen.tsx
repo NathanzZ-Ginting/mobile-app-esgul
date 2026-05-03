@@ -141,10 +141,11 @@ export const AdminChatScreen: React.FC<{ navigation: any }> = ({ navigation }) =
 
   const loadMessages = async (userId: string) => {
     try {
+      // Get messages between admin and this user
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
-        .or(`and(sender_id.eq.${userId},receiver_id.eq.${ADMIN_USER_ID}),and(sender_id.eq.${ADMIN_USER_ID},receiver_id.eq.${userId})`)
+        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
         .order('created_at', { ascending: true })
 
       if (error) throw error

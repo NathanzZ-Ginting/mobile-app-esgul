@@ -42,25 +42,61 @@ const UserTabNavigator = () => (
         else if (route.name === 'Booking') iconName = focused ? 'add-circle' : 'add-circle-outline'
         else if (route.name === 'BookingHistory') iconName = focused ? 'list' : 'list-outline'
         else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline'
-        return <Ionicons name={iconName} size={size} color={color} />
+        return (
+          <View style={{ 
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingVertical: focused ? 8 : 4,
+          }}>
+            <Ionicons name={iconName} size={focused ? 28 : 24} color={color} />
+          </View>
+        )
       },
       tabBarActiveTintColor: '#8B6914',
-      tabBarInactiveTintColor: '#666',
+      tabBarInactiveTintColor: '#7a7a7a',
       tabBarStyle: {
-        backgroundColor: '#2a2a2a',
-        borderTopColor: '#3a3a3a',
-        borderTopWidth: 1,
+        backgroundColor: '#1f1f1f',
+        borderTopColor: '#8B6914',
+        borderTopWidth: 2,
+        paddingTop: 8,
+        paddingBottom: 12,
+        height: 72,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 10,
       },
       tabBarLabelStyle: {
-        fontSize: 12,
-        fontWeight: '500',
+        fontSize: 11,
+        fontWeight: '600',
+        marginTop: 4,
+      },
+      tabBarItemStyle: {
+        paddingVertical: 4,
       },
     })}
   >
-    <Tab.Screen name="Home" component={HomeScreen} />
-    <Tab.Screen name="Booking" component={BookingScreen} />
-    <Tab.Screen name="BookingHistory" component={BookingHistoryScreen} />
-    <Tab.Screen name="Profile" component={ProfileScreen} />
+    <Tab.Screen 
+      name="Home" 
+      component={HomeScreen}
+      options={{ tabBarLabel: 'Home' }}
+    />
+    <Tab.Screen 
+      name="Booking" 
+      component={BookingScreen}
+      options={{ tabBarLabel: 'Booking' }}
+    />
+    <Tab.Screen 
+      name="BookingHistory" 
+      component={BookingHistoryScreen}
+      options={{ tabBarLabel: 'History' }}
+    />
+    <Tab.Screen 
+      name="Profile" 
+      component={ProfileScreen}
+      options={{ tabBarLabel: 'Profile' }}
+    />
   </Tab.Navigator>
 )
 

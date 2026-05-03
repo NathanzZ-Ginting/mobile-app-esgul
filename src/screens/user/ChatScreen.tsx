@@ -129,22 +129,32 @@ export const ChatScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
     try {
       setSending(true)
+      console.log('📤 Sending message...', { 
+        sender_id: user.id, 
+        receiver_id: ADMIN_USER_ID,
+        message: newMessage 
+      })
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('chat_messages')
         .insert({
           sender_id: user.id,
           receiver_id: ADMIN_USER_ID,
           message: newMessage,
-          read: true,
+          read: false,
         })
+        .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Error sending message:', error)
+        throw error
+      }
 
+      console.log('✅ Message sent successfully:', data)
       setNewMessage('')
       flatListRef.current?.scrollToEnd({ animated: true })
     } catch (error) {
-      console.error('Error sending message:', error)
+      console.error('💥 Send message catch error:', error)
     } finally {
       setSending(false)
     }
@@ -298,19 +308,24 @@ export const ChatScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               },
             }}
           />
-          {sending ? (
-            <View style={styles.sendButton}>
+          <TouchableOpacity
+            onPress={sendMessage}
+            disabled={!newMessage.trim() || sending}
+            style={[
+              styles.sendButton,
+              (!newMessage.trim() || sending) && styles.sendButtonDisabled,
+            ]}
+          >
+            {sending ? (
               <ActivityIndicator size="small" color="#8B6914" />
-            </View>
-          ) : (
-            <IconButton
-              icon="send"
-              iconColor={newMessage.trim() ? '#8B6914' : '#666666'}
-              onPress={sendMessage}
-              disabled={!newMessage.trim()}
-              style={styles.sendButton}
-            />
-          )}
+            ) : (
+              <MaterialCommunityIcons 
+                name="send" 
+                size={20} 
+                color={newMessage.trim() ? '#8B6914' : '#666666'} 
+              />
+            )}
+          </TouchableOpacity>
         </View>
         <Text style={styles.charCount}>
           {newMessage.length}/500
@@ -534,7 +549,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   sendButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#2a2a2a',
+    justifyContent: 'center',
+    alignItems: 'center',
     margin: 0,
+    padding: 0,
+  },
+  sendButtonDisabled: {
+    opacity: 0.5,
   },
   charCount: {
     fontSize: 10,
