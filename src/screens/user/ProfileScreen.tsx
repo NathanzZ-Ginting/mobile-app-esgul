@@ -3,10 +3,13 @@ import { View, StyleSheet, ScrollView, Alert, Text, TouchableOpacity, Modal } fr
 import { TextInput, Button } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useAuth } from '../../context/AuthContext'
+import { useNotification } from '../../context/NotificationContext'
 import { supabase } from '../../services/supabaseClient'
+import { SensitiveActionMessages } from '../../utils/notificationHelper'
 
 export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user, logout } = useAuth()
+  const { showNotification } = useNotification()
   const [isEditing, setIsEditing] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -111,7 +114,7 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
-      Alert.alert('Error', 'Name cannot be empty')
+      showNotification(SensitiveActionMessages.validationError, 'warning', 3000)
       return
     }
 
@@ -131,11 +134,14 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 
       if (error) throw error
 
-      Alert.alert('Success', 'Profile updated successfully')
+      showNotification(SensitiveActionMessages.profileUpdate.success, 'success', 3000)
       setIsEditing(false)
     } catch (error) {
       console.error('Error saving profile:', error)
-      Alert.alert('Error', 'Failed to update profile')
+      const errorMsg = (error as any)?.message?.includes('Network')
+        ? SensitiveActionMessages.networkError
+        : SensitiveActionMessages.profileUpdate.error
+      showNotification(errorMsg, 'error', 4000)
     } finally {
       setSaving(false)
     }

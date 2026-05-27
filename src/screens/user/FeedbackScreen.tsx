@@ -1,8 +1,11 @@
 import React, { useState } from 'react'
 import { View, StyleSheet, ScrollView, Alert, Text, TouchableOpacity } from 'react-native'
 import { TextInput, Button } from 'react-native-paper'
+import { useNotification } from '../../context/NotificationContext'
+import { SensitiveActionMessages } from '../../utils/notificationHelper'
 
 export const FeedbackScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { showNotification } = useNotification()
   const [rating, setRating] = useState(5)
   const [review, setReview] = useState('')
   const [status, setStatus] = useState<'safe' | 'issue'>('safe')
@@ -19,21 +22,18 @@ export const FeedbackScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
 
   const handleSubmit = () => {
     if (!review.trim()) {
-      Alert.alert('Error', 'Please enter a review')
+      showNotification(SensitiveActionMessages.validationError, 'warning', 3000)
       return
     }
 
     if (status === 'safe') {
-      Alert.alert('Thank You', 'Your feedback has been recorded. Thank you!')
+      showNotification(SensitiveActionMessages.review.success, 'success', 3000)
       setReview('')
       setRating(5)
       setStatus('safe')
       setTimeout(() => navigation.goBack(), 1500)
     } else {
-      Alert.alert(
-        'Support',
-        'Opening chat with support team...'
-      )
+      showNotification('Menghubungi tim support...', 'info', 2000)
     }
   }
 

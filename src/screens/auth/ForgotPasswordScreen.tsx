@@ -1,29 +1,49 @@
 import React, { useState } from 'react'
-import { View, StyleSheet, ScrollView, Alert, Text, TouchableOpacity, Dimensions } from 'react-native'
+import { View, StyleSheet, ScrollView, Alert, Text, TouchableOpacity } from 'react-native'
 import { TextInput, Button } from 'react-native-paper'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useAuth } from '../../context/AuthContext'
-
-const { height: screenHeight } = Dimensions.get('window')
 
 export const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { forgotPassword, isLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const validateEmail = (emailValue: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(emailValue)
+  }
+
   const handleForgotPassword = async () => {
-    if (!email) {
-      Alert.alert('Error', 'Please enter your email')
+    if (!email.trim()) {
+      Alert.alert('Error', 'Please enter your email address')
+      return
+    }
+
+    if (!validateEmail(email)) {
+      Alert.alert('Error', 'Please enter a valid email address')
       return
     }
 
     setLoading(true)
     try {
       await forgotPassword(email)
-      Alert.alert('Success', 'Password reset email has been sent')
-      navigation.navigate('Login')
+      Alert.alert(
+        'Check Your Email',
+        'We\'ve sent a password reset link to ' + email + '\n\nPlease check your email and follow the instructions to reset your password.',
+        [
+          {
+            text: 'Back to Login',
+            onPress: () => navigation.navigate('Login'),
+          },
+        ]
+      )
     } catch (error: any) {
-      Alert.alert('Error', error.message)
+      if (error.message.includes('not found')) {
+        Alert.alert('User Not Found', 'No account exists with this email address')
+      } else {
+        Alert.alert('Error', error.message || 'Failed to send reset email')
+      }
     } finally {
       setLoading(false)
     }
@@ -89,7 +109,6 @@ export const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({ navigation
               activeOutlineColor="#8B6914"
               textColor="#e0e0e0"
               placeholderTextColor="#999999"
-              labelStyle={styles.label}
               theme={{
                 colors: {
                   primary: '#8B6914',

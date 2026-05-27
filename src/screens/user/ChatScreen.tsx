@@ -14,7 +14,9 @@ import {
 import { TextInput, IconButton } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useAuth } from '../../context/AuthContext'
+import { useNotification } from '../../context/NotificationContext'
 import { supabase } from '../../services/supabaseClient'
+import { SensitiveActionMessages } from '../../utils/notificationHelper'
 
 interface Message {
   id: string
@@ -30,6 +32,7 @@ const ADMIN_USER_ID = 'admin-support-team'
 
 export const ChatScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth()
+  const { showNotification } = useNotification()
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [showInfo, setShowInfo] = useState(false)
@@ -151,10 +154,15 @@ export const ChatScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       }
 
       console.log('✅ Message sent successfully:', data)
+      showNotification(SensitiveActionMessages.chatMessage.success, 'success', 2000)
       setNewMessage('')
       flatListRef.current?.scrollToEnd({ animated: true })
     } catch (error) {
       console.error('💥 Send message catch error:', error)
+      const errorMsg = (error as any)?.message?.includes('Network')
+        ? SensitiveActionMessages.networkError
+        : SensitiveActionMessages.chatMessage.error
+      showNotification(errorMsg, 'error', 3000)
     } finally {
       setSending(false)
     }

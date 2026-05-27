@@ -4,7 +4,9 @@ import { TextInput, Button, Menu } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { useAuth } from '../../context/AuthContext'
+import { useNotification } from '../../context/NotificationContext'
 import { supabase } from '../../services/supabaseClient'
+import { SensitiveActionMessages } from '../../utils/notificationHelper'
 
 interface Service {
   id: string
@@ -14,6 +16,7 @@ interface Service {
 
 export const BookingScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth()
+  const { showNotification } = useNotification()
   const [formData, setFormData] = useState({
     service: '',
     serviceId: '',
@@ -52,12 +55,12 @@ export const BookingScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 
   const handleSubmit = async () => {
     if (!formData.serviceId || !formData.vehicleType || !formData.vehicleBrand || !formData.vehiclePlate) {
-      Alert.alert('Error', 'Please fill all required fields')
+      showNotification(SensitiveActionMessages.validationError, 'warning', 3000)
       return
     }
 
     if (!user?.id) {
-      Alert.alert('Error', 'User not authenticated')
+      showNotification('User belum terautentikasi', 'error')
       return
     }
 
@@ -84,7 +87,7 @@ export const BookingScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 
       if (error) throw error
 
-      Alert.alert('Success', 'Booking created successfully!')
+      showNotification(SensitiveActionMessages.booking.success, 'success', 3000)
       setFormData({
         service: '',
         serviceId: '',
@@ -95,10 +98,15 @@ export const BookingScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
         vehiclePlate: '',
         notes: '',
       })
-      navigation.navigate('BookingHistory')
+      setTimeout(() => {
+        navigation.navigate('BookingHistory')
+      }, 500)
     } catch (error: any) {
       console.error('Error creating booking:', error)
-      Alert.alert('Error', error.message || 'Failed to create booking')
+      const errorMessage = error?.message?.includes('Network') 
+        ? SensitiveActionMessages.networkError 
+        : SensitiveActionMessages.booking.error
+      showNotification(errorMessage, 'error', 4000)
     } finally {
       setIsSubmitting(false)
     }
@@ -194,7 +202,7 @@ export const BookingScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
               </TouchableOpacity>
             }
           >
-            {['Car', 'Truck', 'Motorcycle'].map((v) => (
+            {['Car', 'Motorcycle'].map((v) => (
               <Menu.Item
                 key={v}
                 onPress={() => {

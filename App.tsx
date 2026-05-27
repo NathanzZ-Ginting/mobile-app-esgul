@@ -2,7 +2,9 @@ import React, { useEffect } from 'react'
 import { PaperProvider } from 'react-native-paper'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { AuthProvider } from './src/context/AuthContext'
+import { NotificationProvider } from './src/context/NotificationContext'
 import { RootNavigator } from './src/navigation/RootNavigator'
+import { NotificationOverlay } from './src/components/NotificationOverlay'
 
 export default function App() {
   useEffect(() => {
@@ -15,9 +17,12 @@ export default function App() {
 
   return (
     <PaperProvider>
-      <AuthProvider>
-        <RootNavigator />
-      </AuthProvider>
+      <NotificationProvider>
+        <AuthProvider>
+          <RootNavigator />
+          <NotificationOverlay />
+        </AuthProvider>
+      </NotificationProvider>
     </PaperProvider>
   )
 }

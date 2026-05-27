@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { View, StyleSheet, FlatList, Text, ActivityIndicator } from 'react-native'
-import { Card, Chip } from 'react-native-paper'
+import { Card } from 'react-native-paper'
 import { supabase } from '../../services/supabaseClient'
 
 interface Service {
@@ -49,10 +49,9 @@ export const ServiceCatalogScreen: React.FC = () => {
           <View style={styles.cardHeader}>
             <Text style={styles.title}>{item.title}</Text>
             {item.discount_percent && (
-              <Chip
-                label={`${item.discount_percent}% OFF`}
-                style={styles.discountChip}
-              />
+              <View style={styles.discountChip}>
+                <Text style={styles.discountText}>{item.discount_percent}% OFF</Text>
+              </View>
             )}
           </View>
 
@@ -152,6 +151,14 @@ const styles = StyleSheet.create({
   },
   discountChip: {
     backgroundColor: '#FF5252',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  discountText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   description: {
     fontSize: 13,

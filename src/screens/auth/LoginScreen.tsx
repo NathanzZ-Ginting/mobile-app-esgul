@@ -9,6 +9,7 @@ import {
 } from 'react-native'
 import { Text } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { AuthForm } from '../../components/AuthForm'
 import { useAuth } from '../../context/AuthContext'
 
@@ -68,9 +69,9 @@ export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         {/* Logo Section - Compact */}
         <View style={styles.logoSection}>
           <View style={styles.logoContainer}>
-            <Text style={styles.logoIcon}>●</Text>
+            <MaterialCommunityIcons name="cog" size={40} color="#8B6914" />
           </View>
-          <Text style={styles.brandName}>ESGUL</Text>
+          <Text style={styles.brandName}>ESGUL online booking service</Text>
           <Text style={styles.brandSub}>Service Pro</Text>
         </View>
 
@@ -114,7 +115,7 @@ export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <View style={styles.signupRow}>
             <Text style={styles.noAccountText}>No account? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.signupText}>Create one</Text>
+              <Text style={styles.signupText}>Create account</Text>
             </TouchableOpacity>
           </View>
         </View>
