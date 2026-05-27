@@ -1,4 +1,32 @@
 -- ESGUL Service Pro - Complete Database Schema with RLS
+-- Last Updated: 27 Mei 2026
+
+-- Drop old policies if they exist (to avoid conflicts on re-run)
+DROP POLICY IF EXISTS "Users can view own data" ON users;
+DROP POLICY IF EXISTS "Users can update own profile" ON users;
+DROP POLICY IF EXISTS "Users can view own bookings" ON bookings;
+DROP POLICY IF EXISTS "Users can create bookings" ON bookings;
+DROP POLICY IF EXISTS "Users can update own bookings" ON bookings;
+DROP POLICY IF EXISTS "Users can view own chat messages" ON chat_messages;
+DROP POLICY IF EXISTS "Users can send messages" ON chat_messages;
+DROP POLICY IF EXISTS "Users can mark messages read" ON chat_messages;
+DROP POLICY IF EXISTS "Admin can receive messages" ON chat_messages;
+DROP POLICY IF EXISTS "Users can view own notifications" ON notifications;
+DROP POLICY IF EXISTS "Users can update own notifications" ON notifications;
+DROP POLICY IF EXISTS "Users can create reviews" ON reviews;
+DROP POLICY IF EXISTS "Users can view reviews for their bookings" ON reviews;
+
+-- Drop tables if they exist (cascade to remove dependencies)
+-- WARNING: This will delete all data - only use on development/testing
+-- For production, use migrations instead
+-- DROP TABLE IF EXISTS chat_messages CASCADE;
+-- DROP TABLE IF EXISTS bookings CASCADE;
+-- DROP TABLE IF EXISTS reviews CASCADE;
+-- DROP TABLE IF EXISTS notifications CASCADE;
+-- DROP TABLE IF EXISTS services CASCADE;
+-- DROP TABLE IF EXISTS mechanics CASCADE;
+-- DROP TABLE IF EXISTS promotions CASCADE;
+-- DROP TABLE IF EXISTS users CASCADE;
 
 -- 1. Users Table (linked to auth.users)
 CREATE TABLE IF NOT EXISTS users (
@@ -131,7 +159,8 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.users (id, email, name, role)
-  VALUES (new.id, new.email, new.user_metadata->>'name', 'user');
+  VALUES (new.id, new.email, COALESCE(new.user_metadata->>'name', new.email), 'user')
+  ON CONFLICT (id) DO NOTHING;
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -142,76 +171,64 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- Enable RLS
+-- Enable RLS on all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 
--- Users can view their own profile
+-- Disable RLS on public tables
+ALTER TABLE services DISABLE ROW LEVEL SECURITY;
+ALTER TABLE mechanics DISABLE ROW LEVEL SECURITY;
+ALTER TABLE promotions DISABLE ROW LEVEL SECURITY;
+
+-- Users Policies
 CREATE POLICY "Users can view own data" ON users
   FOR SELECT USING (auth.uid() = id);
 
--- Users can update their own profile
 CREATE POLICY "Users can update own profile" ON users
   FOR UPDATE USING (auth.uid() = id);
 
--- Users can view their own bookings
+-- Bookings Policies
 CREATE POLICY "Users can view own bookings" ON bookings
   FOR SELECT USING (user_id = auth.uid());
 
--- Users can create their own bookings
 CREATE POLICY "Users can create bookings" ON bookings
   FOR INSERT WITH CHECK (user_id = auth.uid());
 
--- Users can update their own bookings
 CREATE POLICY "Users can update own bookings" ON bookings
   FOR UPDATE USING (user_id = auth.uid());
 
--- Chat Messages RLS - Allow users to view their own messages and admin messages
+-- Chat Messages Policies
 CREATE POLICY "Users can view own chat messages" ON chat_messages
   FOR SELECT USING (
     sender_id = auth.uid() OR receiver_id::uuid = auth.uid()
   );
 
--- Chat Messages - Allow users to create messages
 CREATE POLICY "Users can send messages" ON chat_messages
   FOR INSERT WITH CHECK (sender_id = auth.uid());
 
--- Chat Messages - Allow marking messages as read
 CREATE POLICY "Users can mark messages read" ON chat_messages
   FOR UPDATE USING (receiver_id::uuid = auth.uid()) 
   WITH CHECK (receiver_id::uuid = auth.uid());
 
--- Admin chat receive messages (for admin-support-team special handling)
 CREATE POLICY "Admin can receive messages" ON chat_messages
   FOR SELECT USING (
     receiver_id = 'admin-support-team' OR 
     sender_id = auth.uid()
   );
 
--- Users can view their notifications
+-- Notifications Policies
 CREATE POLICY "Users can view own notifications" ON notifications
   FOR SELECT USING (user_id = auth.uid());
 
--- Users can mark notifications as read
 CREATE POLICY "Users can update own notifications" ON notifications
   FOR UPDATE USING (user_id = auth.uid());
 
--- Users can view services (public)
-ALTER TABLE services DISABLE ROW LEVEL SECURITY;
-
--- Mechanics are public
-ALTER TABLE mechanics DISABLE ROW LEVEL SECURITY;
-
--- Promotions are public
-ALTER TABLE promotions DISABLE ROW LEVEL SECURITY;
-
--- Allow inserts for reviews (users can create reviews)
+-- Reviews Policies
 CREATE POLICY "Users can create reviews" ON reviews
   FOR INSERT WITH CHECK (true);
 
--- Users can view their own reviews
 CREATE POLICY "Users can view reviews for their bookings" ON reviews
   FOR SELECT USING (true);
