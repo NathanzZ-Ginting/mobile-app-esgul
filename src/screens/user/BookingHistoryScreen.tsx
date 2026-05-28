@@ -84,7 +84,7 @@ export const BookingHistoryScreen: React.FC = () => {
         .order('booking_date', { ascending: false })
 
       if (error) throw error
-      setBookings(data || [])
+      setBookings((data as any) || [])
     } catch (error) {
       console.error('Error fetching bookings:', error)
       setBookings([])

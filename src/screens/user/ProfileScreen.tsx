@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, StyleSheet, ScrollView, Alert, Text, TouchableOpacity, Modal } from 'react-native'
+import { View, StyleSheet, ScrollView, Text, TouchableOpacity, Modal } from 'react-native'
 import { TextInput, Button } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useAuth } from '../../context/AuthContext'
@@ -7,7 +7,7 @@ import { useNotification } from '../../context/NotificationContext'
 import { supabase } from '../../services/supabaseClient'
 import { SensitiveActionMessages } from '../../utils/notificationHelper'
 
-export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+export const ProfileScreen: React.FC = () => {
   const { user, logout } = useAuth()
   const { showNotification } = useNotification()
   const [isEditing, setIsEditing] = useState(false)
@@ -63,24 +63,27 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
         .eq('user_id', user.id)
 
       // Get reviews for user's bookings
-      const { data: reviewsData } = await supabase
-        .from('reviews')
-        .select('rating')
-        .in(
-          'booking_id',
-          (
-            await supabase
-              .from('bookings')
-              .select('id')
-              .eq('user_id', user.id)
-          ).data?.map((b: any) => b.id) || []
-        )
+      const bookingIds = (
+        await supabase
+          .from('bookings')
+          .select('id')
+          .eq('user_id', user.id)
+      ).data?.map((b: any) => b.id) || []
 
-      const reviewCount = reviewsData?.length || 0
+      let reviewsData: any[] = []
+      if (bookingIds.length > 0) {
+        const { data } = await supabase
+          .from('reviews')
+          .select('rating')
+          .in('booking_id', bookingIds)
+        reviewsData = data || []
+      }
+
+      const reviewCount = reviewsData.length || 0
       const avgRating =
         reviewCount > 0
           ? (
-              reviewsData?.reduce((sum: number, r: any) => sum + r.rating, 0) /
+              reviewsData.reduce((sum: number, r: any) => sum + r.rating, 0) /
               reviewCount
             ).toFixed(1)
           : 0

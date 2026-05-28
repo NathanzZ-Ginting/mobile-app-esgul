@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { View, StyleSheet, ScrollView, Alert, Text, TouchableOpacity } from 'react-native'
+import { View, StyleSheet, ScrollView, Text, TouchableOpacity } from 'react-native'
 import { TextInput, Button } from 'react-native-paper'
 import { useNotification } from '../../context/NotificationContext'
 import { SensitiveActionMessages } from '../../utils/notificationHelper'

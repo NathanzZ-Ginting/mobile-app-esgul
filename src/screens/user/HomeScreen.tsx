@@ -111,7 +111,7 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         .order('booking_date', { ascending: true })
 
       if (error) throw error
-      setBookings(data || [])
+      setBookings((data as any) || [])
     } catch (error) {
       console.error('Error fetching bookings:', error)
       setBookings([])

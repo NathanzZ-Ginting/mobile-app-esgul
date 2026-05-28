@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, StyleSheet, ScrollView, Alert, Text, TouchableOpacity, Platform } from 'react-native'
+import { View, StyleSheet, ScrollView, Text, TouchableOpacity, Platform } from 'react-native'
 import { TextInput, Button, Menu } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import DateTimePicker from '@react-native-community/datetimepicker'
@@ -112,7 +112,7 @@ export const BookingScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     }
   }
 
-  const handleDateChange = (event: any, selectedDate: any) => {
+  const handleDateChange = (_event: any, selectedDate: any) => {
     if (Platform.OS === 'android') {
       setShowDatePicker(false)
     }

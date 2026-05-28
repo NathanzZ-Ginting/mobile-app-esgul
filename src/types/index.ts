@@ -25,14 +25,19 @@ export interface Booking {
   user_id: string
   service_id: string
   vehicle_type: 'Mobil' | 'Motor'
-  status: 'Pending' | 'Confirmed' | 'In Progress' | 'Completed' | 'Cancelled'
+  status: 'Pending' | 'Confirmed' | 'In Progress' | 'Completed' | 'Cancelled' | 'Menunggu Konfirmasi' | 'Dikonfirmasi' | 'Sedang Dikerjakan' | 'Selesai' | 'Dibatalkan'
   booking_date: string
   booking_time: string
-  vehicle_brand: string
-  vehicle_plate: string
-  notes: string
-  total_price: number
-  created_at: string
+  vehicle_brand?: string
+  vehicle_plate?: string
+  notes?: string
+  total_price?: number
+  created_at?: string
+  services?: {
+    title: string
+    price: number
+  }
+  rating?: number
 }
 
 export interface Promotion {
